@@ -64,11 +64,19 @@ class Reference:
         # Phase 1: Estimate the true signal mean with robust referencing
         self.robust_reference()
         if self.noisy_channels["bad_all"]:
-            self.raw.info["bads"] = self.noisy_channels["bad_all"]
-            self.raw.interpolate_bads()
-        self.reference_signal = (
-            np.nanmean(self.raw.get_data(picks=self.reference_channels), axis=0) * 1e6
-        )
+            #self.raw.info["bads"] = self.noisy_channels["bad_all"]
+            dummy = self.raw.copy()
+            dummy.info["bads"] = self.noisy_channels["bad_all"]
+            dummy.interpolate_bads()
+            self.reference_signal = (
+                #np.nanmean(self.raw.get_data(picks=self.reference_channels), axis=0) * 1e6
+                np.nanmean(dummy.get_data(picks=self.reference_channels), axis=0) * 1e6
+            )
+            del dummy
+        else:
+            self.reference_signal = (
+                np.nanmean(self.raw.get_data(picks=self.reference_channels), axis=0) * 1e6
+            )
         rereferenced_index = [
             self.ch_names_eeg.index(ch) for ch in self.rereferenced_channels
         ]
@@ -78,11 +86,11 @@ class Reference:
 
         # Phase 2: Find the bad channels and interpolate
         self.raw._data = self.EEG * 1e-6
-        noisy_detector = NoisyChannels(self.raw)
-        noisy_detector.find_all_bads(ransac=self.ransac)
+        self.noisy_detector = NoisyChannels(self.raw)
+        self.noisy_detector.find_all_bads(ransac=self.ransac)
 
         # Record Noisy channels and EEG before interpolation
-        self.bad_before_interpolation = noisy_detector.get_bads(verbose=True)
+        self.bad_before_interpolation = self.noisy_detector.get_bads(verbose=True)
         self.EEG_before_interpolation = self.EEG.copy()
 
         bad_channels = _union(self.bad_before_interpolation, self.unusable_channels)
@@ -131,7 +139,7 @@ class Reference:
         raw._data = removeTrend(raw.get_data(), sample_rate=self.sfreq)
 
         # Determine unusable channels and remove them from the reference channels
-        noisy_detector = NoisyChannels(raw)
+        noisy_detector = NoisyChannels(raw,do_detrend=False)
         noisy_detector.find_all_bads(ransac=self.ransac)
         self.noisy_channels_original = {
             "bad_by_nan": noisy_detector.bad_by_nan,
