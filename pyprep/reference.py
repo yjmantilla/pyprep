@@ -64,11 +64,17 @@ class Reference:
         # Phase 1: Estimate the true signal mean with robust referencing
         self.robust_reference()
         if self.noisy_channels["bad_all"]:
-            self.raw.info["bads"] = self.noisy_channels["bad_all"]
-            self.raw.interpolate_bads()
-        self.reference_signal = (
-            np.nanmean(self.raw.get_data(picks=self.reference_channels), axis=0) * 1e6
-        )
+            dummy = self.raw.copy()
+            dummy.info["bads"] = self.noisy_channels["bad_all"]
+            dummy.interpolate_bads()
+            self.reference_signal = (
+            np.nanmean(dummy.get_data(picks=self.reference_channels), axis=0) * 1e6
+            )
+            del dummy
+        else:
+            self.reference_signal = (
+                np.nanmean(self.raw.get_data(picks=self.reference_channels), axis=0) * 1e6
+            )
         rereferenced_index = [
             self.ch_names_eeg.index(ch) for ch in self.rereferenced_channels
         ]
@@ -78,11 +84,11 @@ class Reference:
 
         # Phase 2: Find the bad channels and interpolate
         self.raw._data = self.EEG * 1e-6
-        noisy_detector = NoisyChannels(self.raw)
-        noisy_detector.find_all_bads(ransac=self.ransac)
+        self.noisy_detector_before_interpolation = NoisyChannels(self.raw)
+        self.noisy_detector_before_interpolation.find_all_bads(ransac=self.ransac)
 
         # Record Noisy channels and EEG before interpolation
-        self.bad_before_interpolation = noisy_detector.get_bads(verbose=True)
+        self.bad_before_interpolation = self.noisy_detector_before_interpolation.get_bads(verbose=True)
         self.EEG_before_interpolation = self.EEG.copy()
 
         bad_channels = _union(self.bad_before_interpolation, self.unusable_channels)
@@ -102,9 +108,9 @@ class Reference:
 
         # Still noisy channels after interpolation
         self.interpolated_channels = bad_channels
-        noisy_detector = NoisyChannels(self.raw)
-        noisy_detector.find_all_bads(ransac=self.ransac)
-        self.still_noisy_channels = noisy_detector.get_bads()
+        self.noisy_detector_after_interpolation = NoisyChannels(self.raw)
+        self.noisy_detector_after_interpolation.find_all_bads(ransac=self.ransac)
+        self.still_noisy_channels = self.noisy_detector_after_interpolation.get_bads()
         self.raw.info["bads"] = self.still_noisy_channels
         return self
 
