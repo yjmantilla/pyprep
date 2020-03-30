@@ -87,5 +87,29 @@ class PrepPipeline:
         self.reference_after_interpolation = reference.reference_signal_new
         self.interpolated_channels = reference.interpolated_channels
         self.still_noisy_channels = reference.still_noisy_channels
+        self.noisy_detector_before_interpolation = \
+        { \
+        'bad_by_nan' : reference.noisy_detector_before_interpolation.bad_by_nan,
+        'bad_by_flat' : reference.noisy_detector_before_interpolation.bad_by_flat,
+        'bad_by_deviation' : reference.noisy_detector_before_interpolation.bad_by_deviation,
+        'bad_by_hf_noise' : reference.noisy_detector_before_interpolation.bad_by_hf_noise,
+        'bad_by_correlation' : reference.noisy_detector_before_interpolation.bad_by_correlation,
+        'bad_by_SNR' : reference.noisy_detector_before_interpolation.bad_by_SNR, 
+        'bad_by_dropout' : reference.noisy_detector_before_interpolation.bad_by_dropout,
+        'bad_by_ransac' : reference.noisy_detector_before_interpolation.bad_by_ransac
+        }
+
+
+        self.noisy_detector_after_interpolation = \
+        { \
+        'bad_by_nan' : reference.noisy_detector_after_interpolation.bad_by_nan,
+        'bad_by_flat' : reference.noisy_detector_after_interpolation.bad_by_flat,
+        'bad_by_deviation' : reference.noisy_detector_after_interpolation.bad_by_deviation,
+        'bad_by_hf_noise' : reference.noisy_detector_after_interpolation.bad_by_hf_noise,
+        'bad_by_correlation' : reference.noisy_detector_after_interpolation.bad_by_correlation,
+        'bad_by_SNR' : reference.noisy_detector_after_interpolation.bad_by_SNR, 
+        'bad_by_dropout' : reference.noisy_detector_after_interpolation.bad_by_dropout,
+        'bad_by_ransac' : reference.noisy_detector_after_interpolation.bad_by_ransac
+        }
 
         return self
