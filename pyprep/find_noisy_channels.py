@@ -24,7 +24,7 @@ class NoisyChannels:
 
     """
 
-    def __init__(self, raw, do_detrend = True):
+    def __init__(self, raw, do_detrend=True):
         """Initialize the class."""
         # Make sure that we got an MNE object
         assert isinstance(raw, mne.io.BaseRaw)
@@ -32,8 +32,10 @@ class NoisyChannels:
         self.raw_mne = raw.copy()
         self.sample_rate = raw.info["sfreq"]
         if do_detrend:
-            self.raw_mne._data = removeTrend(self.raw_mne.get_data(),sample_rate = self.sample_rate)
-        
+            self.raw_mne._data = removeTrend(
+                self.raw_mne.get_data(), sample_rate=self.sample_rate
+            )
+
         self.EEGData = self.raw_mne.get_data(picks="eeg")
         self.EEGData_beforeFilt = self.EEGData
         self.ch_names_original = np.asarray(raw.info["ch_names"])
@@ -344,7 +346,7 @@ class NoisyChannels:
         corr_thresh=0.75,
         fraction_bad=0.4,
         corr_window_secs=5.0,
-        ):
+    ):
         """Detect channels that are not predicted well by other channels.
 
         Here, a ransac approach (see [1], and a short discussion in [2]) is
@@ -405,9 +407,9 @@ class NoisyChannels:
 
         if n_pred_chns <= 3:
             raise IOError(
-                        "Too few channels available to reliably perform"
-                        " ransac. Perhaps, too many channels have failed"
-                        " quality tests."
+                "Too few channels available to reliably perform"
+                " ransac. Perhaps, too many channels have failed"
+                " quality tests."
             )
 
         # Correlate ransac prediction and eeg data
@@ -415,33 +417,32 @@ class NoisyChannels:
         correlation_window = np.arange(correlation_frames)
         n = correlation_window.shape[0]
 
-        correlation_offsets = np.arange(0, (self.signal_len -
-                                            correlation_frames),
-                                        correlation_frames)
+        correlation_offsets = np.arange(
+            0, (self.signal_len - correlation_frames), correlation_frames
+        )
         w_correlation = correlation_offsets.shape[0]
 
         # Preallocate
         channel_correlations = np.ones((w_correlation, self.n_chans_new))
-        print('RANSAC PREDICTIONS:' + str(self.n_chans_new))
+        print("RANSAC PREDICTIONS:" + str(self.n_chans_new))
 
         for chanx in range(self.EEGData.shape[0]):
             # Make the ransac predictions
             ransac_eeg = self.run_ransac(
-                chn_pos=chn_pos[[chanx],:],
+                chn_pos=chn_pos[[chanx], :],
                 chn_pos_good=chn_pos_good,
                 good_chn_labs=good_chn_labs,
                 n_pred_chns=n_pred_chns,
                 data=self.EEGData,
                 n_samples=n_samples,
-                )
-
+            )
 
             # For the actual data
             data_window = self.EEGData[chanx, : n * w_correlation]
             data_window = data_window.reshape(1, n, w_correlation)
 
             # For the ransac predicted eeg
-            pred_window = ransac_eeg[0, :n*w_correlation]
+            pred_window = ransac_eeg[0, : n * w_correlation]
             pred_window = pred_window.reshape(1, n, w_correlation)
 
             # Perform correlations
@@ -455,20 +456,20 @@ class NoisyChannels:
                 # and use diag to exctract correlation of
                 # data_i with pred_i
                 R = np.diag(R[0:1, 1:])
-                channel_correlations[k,chanx] = R
-            print(chanx,end=' ')
-        
+                channel_correlations[k, chanx] = R
+            print(chanx, end=" ")
+
         # Thresholding
         thresholded_correlations = channel_correlations < corr_thresh
         frac_bad_corr_windows = np.mean(thresholded_correlations, axis=0)
-        print('\nRANSAC DONE\n')
+        print("\nRANSAC DONE\n")
         # find the corresponding channel names and return
         bad_ransac_channels_idx = np.argwhere(frac_bad_corr_windows > fraction_bad)
         bad_ransac_channels_name = self.ch_names_new[
             bad_ransac_channels_idx.astype(int)
         ]
         self.bad_by_ransac = [i[0] for i in bad_ransac_channels_name]
-        
+
         return None
 
     def run_ransac(
@@ -506,7 +507,7 @@ class NoisyChannels:
         # Before running, make sure we have enough memory
         try:
             available_gb = virtual_memory().available * 1e-9
-            needed_gb = (data[:chn_pos.shape[0],:].nbytes * 1e-9) * n_samples
+            needed_gb = (data[: chn_pos.shape[0], :].nbytes * 1e-9) * n_samples
             assert available_gb > needed_gb
         except AssertionError:
             raise MemoryError(

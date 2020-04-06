@@ -68,12 +68,13 @@ class Reference:
             dummy.info["bads"] = self.noisy_channels["bad_all"]
             dummy.interpolate_bads()
             self.reference_signal = (
-            np.nanmean(dummy.get_data(picks=self.reference_channels), axis=0) * 1e6
+                np.nanmean(dummy.get_data(picks=self.reference_channels), axis=0) * 1e6
             )
             del dummy
         else:
             self.reference_signal = (
-                np.nanmean(self.raw.get_data(picks=self.reference_channels), axis=0) * 1e6
+                np.nanmean(self.raw.get_data(picks=self.reference_channels), axis=0)
+                * 1e6
             )
         rereferenced_index = [
             self.ch_names_eeg.index(ch) for ch in self.rereferenced_channels
@@ -88,7 +89,9 @@ class Reference:
         self.noisy_detector_before_interpolation.find_all_bads(ransac=self.ransac)
 
         # Record Noisy channels and EEG before interpolation
-        self.bad_before_interpolation = self.noisy_detector_before_interpolation.get_bads(verbose=True)
+        self.bad_before_interpolation = self.noisy_detector_before_interpolation.get_bads(
+            verbose=True
+        )
         self.EEG_before_interpolation = self.EEG.copy()
 
         bad_channels = _union(self.bad_before_interpolation, self.unusable_channels)
@@ -137,7 +140,7 @@ class Reference:
         raw._data = removeTrend(raw.get_data(), sample_rate=self.sfreq)
 
         # Determine unusable channels and remove them from the reference channels
-        noisy_detector = NoisyChannels(raw,do_detrend=False)
+        noisy_detector = NoisyChannels(raw, do_detrend=False)
         noisy_detector.find_all_bads(ransac=self.ransac)
         self.noisy_channels_original = {
             "bad_by_nan": noisy_detector.bad_by_nan,
