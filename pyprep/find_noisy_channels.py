@@ -438,24 +438,10 @@ class NoisyChannels:
                 " quality tests."
             )
 
-        # Correlate ransac prediction and eeg data
-        correlation_frames = corr_window_secs * self.sample_rate
-        correlation_window = np.arange(correlation_frames)
-        n = correlation_window.shape[0]
-
-        correlation_offsets = np.arange(
-            0, (self.signal_len - correlation_frames), correlation_frames
-        )
-        w_correlation = correlation_offsets.shape[0]
-
-        # Preallocate
-        channel_correlations = np.ones((w_correlation, self.n_chans_new))
-        # print("RANSAC PREDICTIONS:" + str(self.n_chans_new))
-
-        for chanx in range(self.EEGData.shape[0]):
+        try:
             # Make the ransac predictions
             ransac_eeg = self.run_ransac(
-                chn_pos=chn_pos[[chanx], :],
+                chn_pos=chn_pos,
                 chn_pos_good=chn_pos_good,
                 good_chn_labs=good_chn_labs,
                 n_pred_chns=n_pred_chns,
@@ -463,13 +449,25 @@ class NoisyChannels:
                 n_samples=n_samples,
             )
 
+            # Correlate ransac prediction and eeg data
+            correlation_frames = corr_window_secs * self.sample_rate
+            correlation_window = np.arange(correlation_frames)
+            n = correlation_window.shape[0]
+            correlation_offsets = np.arange(
+                0, (self.signal_len - correlation_frames), correlation_frames
+            )
+            w_correlation = correlation_offsets.shape[0]
+
             # For the actual data
-            data_window = self.EEGData[chanx, : n * w_correlation]
-            data_window = data_window.reshape(1, n, w_correlation)
+            data_window = self.EEGData[: self.n_chans_new, : n * w_correlation]
+            data_window = data_window.reshape(self.n_chans_new, n, w_correlation)
 
             # For the ransac predicted eeg
-            pred_window = ransac_eeg[0, : n * w_correlation]
-            pred_window = pred_window.reshape(1, n, w_correlation)
+            pred_window = ransac_eeg[: self.n_chans_new, : n * w_correlation]
+            pred_window = pred_window.reshape(self.n_chans_new, n, w_correlation)
+
+            # Preallocate
+            channel_correlations = np.ones((w_correlation, self.n_chans_new))
 
             # Perform correlations
             for k in range(w_correlation):
@@ -481,11 +479,60 @@ class NoisyChannels:
                 # Take only correlations of data with pred
                 # and use diag to exctract correlation of
                 # data_i with pred_i
-                R = np.diag(
-                    R[0:1, 1:]
-                )  # This was a matrix but Im looking for a single value
-                channel_correlations[k, chanx] = R
-            # print(chanx, end=" ")
+                R = np.diag(R[0 : self.n_chans_new, self.n_chans_new :])
+                channel_correlations[k, :] = R
+
+        except:
+            print("Cannot allocate enough ram for optimized ransac")
+            print("Attempting Slow Ransac")
+            # Correlate ransac prediction and eeg data
+            correlation_frames = corr_window_secs * self.sample_rate
+            correlation_window = np.arange(correlation_frames)
+            n = correlation_window.shape[0]
+
+            correlation_offsets = np.arange(
+                0, (self.signal_len - correlation_frames), correlation_frames
+            )
+            w_correlation = correlation_offsets.shape[0]
+
+            # Preallocate
+            channel_correlations = np.ones((w_correlation, self.n_chans_new))
+            # print("RANSAC PREDICTIONS:" + str(self.n_chans_new))
+
+            for chanx in range(self.EEGData.shape[0]):
+                # Make the ransac predictions
+                ransac_eeg = self.run_ransac(
+                    chn_pos=chn_pos[[chanx], :],
+                    chn_pos_good=chn_pos_good,
+                    good_chn_labs=good_chn_labs,
+                    n_pred_chns=n_pred_chns,
+                    data=self.EEGData,
+                    n_samples=n_samples,
+                )
+
+                # For the actual data
+                data_window = self.EEGData[chanx, : n * w_correlation]
+                data_window = data_window.reshape(1, n, w_correlation)
+
+                # For the ransac predicted eeg
+                pred_window = ransac_eeg[0, : n * w_correlation]
+                pred_window = pred_window.reshape(1, n, w_correlation)
+
+                # Perform correlations
+                for k in range(w_correlation):
+                    data_portion = data_window[:, :, k]
+                    pred_portion = pred_window[:, :, k]
+
+                    R = np.corrcoef(data_portion, pred_portion)
+
+                    # Take only correlations of data with pred
+                    # and use diag to exctract correlation of
+                    # data_i with pred_i
+                    R = np.diag(
+                        R[0:1, 1:]
+                    )  # This was a matrix but Im looking for a single value
+                    channel_correlations[k, chanx] = R
+                # print(chanx, end=" ")
 
         # Thresholding
         thresholded_correlations = channel_correlations < corr_thresh
