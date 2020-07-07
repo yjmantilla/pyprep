@@ -91,11 +91,15 @@ class Reference:
 
         # Phase 2: Find the bad channels and interpolate
         self.raw._data = self.EEG * 1e-6
-        noisy_detector = NoisyChannels(self.raw, random_state=self.random_state)
-        noisy_detector.find_all_bads(ransac=self.ransac)
+        self.noisy_detector_before_interpolation = NoisyChannels(
+            self.raw, random_state=self.random_state
+        )
+        self.noisy_detector_before_interpolation.find_all_bads(ransac=self.ransac)
 
         # Record Noisy channels and EEG before interpolation
-        self.bad_before_interpolation = noisy_detector.get_bads(verbose=True)
+        self.bad_before_interpolation = self.noisy_detector_before_interpolation.get_bads(
+            verbose=True
+        )
         self.EEG_before_interpolation = self.EEG.copy()
 
         bad_channels = _union(self.bad_before_interpolation, self.unusable_channels)
@@ -115,9 +119,11 @@ class Reference:
 
         # Still noisy channels after interpolation
         self.interpolated_channels = bad_channels
-        noisy_detector = NoisyChannels(self.raw, random_state=self.random_state)
-        noisy_detector.find_all_bads(ransac=self.ransac)
-        self.still_noisy_channels = noisy_detector.get_bads()
+        self.noisy_detector_after_interpolation = NoisyChannels(
+            self.raw, random_state=self.random_state
+        )
+        self.noisy_detector_after_interpolation.find_all_bads(ransac=self.ransac)
+        self.still_noisy_channels = self.noisy_detector_after_interpolation.get_bads()
         self.raw.info["bads"] = self.still_noisy_channels
         return self
 

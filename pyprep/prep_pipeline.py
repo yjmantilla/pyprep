@@ -66,12 +66,6 @@ class PrepPipeline:
 
     def fit(self):
         """Run the whole PREP pipeline."""
-        noisy_detector = NoisyChannels(self.raw, random_state=self.random_state)
-        noisy_detector.find_bad_by_nan_flat()
-        # unusable_channels = _union(
-        #     noisy_detector.bad_by_nan, noisy_detector.bad_by_flat
-        # )
-        # reference_channels = _set_diff(self.prep_params["ref_chs"], unusable_channels)
         # Step 1: 1Hz high pass filtering
         if len(self.prep_params["line_freqs"]) != 0:
             self.EEG_new = removeTrend(self.EEG_raw, sample_rate=self.sfreq)
@@ -99,7 +93,8 @@ class PrepPipeline:
             random_state=self.random_state,
         )
         reference.perform_reference()
-        self.raw = reference.raw
+        self.raw = reference.raw  # This is for backward compatibility
+        self.preprocessed = reference.raw  # more intuitive
         self.noisy_channels_original = reference.noisy_channels_original
         self.bad_before_interpolation = reference.bad_before_interpolation
         self.EEG_before_interpolation = reference.EEG_before_interpolation
@@ -107,5 +102,26 @@ class PrepPipeline:
         self.reference_after_interpolation = reference.reference_signal_new
         self.interpolated_channels = reference.interpolated_channels
         self.still_noisy_channels = reference.still_noisy_channels
+        self.noisy_detector_before_interpolation = {
+            "bad_by_nan": reference.noisy_detector_before_interpolation.bad_by_nan,
+            "bad_by_flat": reference.noisy_detector_before_interpolation.bad_by_flat,
+            "bad_by_deviation": reference.noisy_detector_before_interpolation.bad_by_deviation,
+            "bad_by_hf_noise": reference.noisy_detector_before_interpolation.bad_by_hf_noise,
+            "bad_by_correlation": reference.noisy_detector_before_interpolation.bad_by_correlation,
+            "bad_by_SNR": reference.noisy_detector_before_interpolation.bad_by_SNR,
+            "bad_by_dropout": reference.noisy_detector_before_interpolation.bad_by_dropout,
+            "bad_by_ransac": reference.noisy_detector_before_interpolation.bad_by_ransac,
+        }
+
+        self.noisy_detector_after_interpolation = {
+            "bad_by_nan": reference.noisy_detector_after_interpolation.bad_by_nan,
+            "bad_by_flat": reference.noisy_detector_after_interpolation.bad_by_flat,
+            "bad_by_deviation": reference.noisy_detector_after_interpolation.bad_by_deviation,
+            "bad_by_hf_noise": reference.noisy_detector_after_interpolation.bad_by_hf_noise,
+            "bad_by_correlation": reference.noisy_detector_after_interpolation.bad_by_correlation,
+            "bad_by_SNR": reference.noisy_detector_after_interpolation.bad_by_SNR,
+            "bad_by_dropout": reference.noisy_detector_after_interpolation.bad_by_dropout,
+            "bad_by_ransac": reference.noisy_detector_after_interpolation.bad_by_ransac,
+        }
 
         return self
